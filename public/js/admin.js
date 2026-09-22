@@ -2,7 +2,7 @@
     async function postJson(path, body) {
         const res = await fetch(window.routeUrl(path), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...window.csrfHeaders() },
             body: JSON.stringify(body),
         });
         return res.json();
@@ -33,7 +33,7 @@
             if (!confirm('Delete user and related data?')) return;
             const res = await fetch(window.routeUrl('/api/admin/user/delete'), {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...window.csrfHeaders() },
                 body: JSON.stringify({ user_id: btn.dataset.userId }),
             });
             const data = await res.json();

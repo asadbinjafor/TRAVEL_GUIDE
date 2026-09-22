@@ -11,7 +11,8 @@ class PostRequestModel
     public function create(int $scoutId, array $postData, ?int $originalPostId = null): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO post_requests (scout_id, post_data, original_post_id, status) VALUES (?, ?, ?, ?)'
+            'INSERT INTO post_requests (scout_id, post_data, original_post_id, status)
+             VALUES (?, CAST(? AS jsonb), ?, ?) RETURNING id'
         );
         $stmt->execute([
             $scoutId,
@@ -19,7 +20,7 @@ class PostRequestModel
             $originalPostId,
             'pending',
         ]);
-        return (int) $this->db->lastInsertId();
+        return (int) $stmt->fetchColumn();
     }
 
     public function byScout(int $scoutId): array
@@ -51,9 +52,10 @@ class PostRequestModel
     public function update(int $id, int $scoutId, array $postData): bool
     {
         $stmt = $this->db->prepare(
-            "UPDATE post_requests SET post_data = ? WHERE id = ? AND scout_id = ? AND status = 'pending'"
+            "UPDATE post_requests SET post_data = CAST(? AS jsonb) WHERE id = ? AND scout_id = ? AND status = 'pending'"
         );
-        return $stmt->execute([json_encode($postData, JSON_UNESCAPED_UNICODE), $id, $scoutId]);
+        $stmt->execute([json_encode($postData, JSON_UNESCAPED_UNICODE), $id, $scoutId]);
+        return $stmt->rowCount() === 1;
     }
 
     public function delete(int $id, int $scoutId): bool
@@ -61,7 +63,8 @@ class PostRequestModel
         $stmt = $this->db->prepare(
             "DELETE FROM post_requests WHERE id = ? AND scout_id = ? AND status = 'pending'"
         );
-        return $stmt->execute([$id, $scoutId]);
+        $stmt->execute([$id, $scoutId]);
+        return $stmt->rowCount() === 1;
     }
 
     public function pendingAll(): array

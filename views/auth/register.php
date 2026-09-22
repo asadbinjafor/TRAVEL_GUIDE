@@ -12,14 +12,7 @@
             <input type="email" id="email" name="email" value="<?= Security::e($old['email'] ?? '') ?>" required>
             <?php if (!empty($errors['email'])): ?><div class="field-error"><?= Security::e($errors['email']) ?></div><?php endif; ?>
         </div>
-        <div class="form-group">
-            <label for="role">Role</label>
-            <select id="role" name="role" required>
-                <?php foreach (['user' => 'General User', 'scout' => 'Scout', 'admin' => 'Admin'] as $val => $label): ?>
-                    <option value="<?= $val ?>" <?= ($old['role'] ?? 'user') === $val ? 'selected' : '' ?>><?= Security::e($label) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+        <p class="page-sub">New registrations create a general user account. An administrator can create scout or admin accounts.</p>
         <div class="form-group">
             <label for="password">Password (min 8)</label>
             <input type="password" id="password" name="password" required minlength="8">

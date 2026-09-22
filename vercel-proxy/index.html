@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+  <title>Starting Travel Guide</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; color: #123047; background: radial-gradient(circle at top, #dff6f7, #f7fafb 58%); }
+    main { width: min(100%, 520px); padding: clamp(24px, 6vw, 44px); border: 1px solid #d7e4e8; border-radius: 24px; background: rgba(255,255,255,.94); box-shadow: 0 24px 70px rgba(18,48,71,.12); text-align: center; }
+    .mark { width: 62px; height: 62px; margin: 0 auto 20px; display: grid; place-items: center; border-radius: 18px; background: #0c6e8a; color: #fff; font-size: 30px; }
+    h1 { margin: 0 0 10px; font-size: clamp(1.6rem, 6vw, 2.35rem); }
+    p { color: #557080; line-height: 1.6; }
+    .bar { height: 9px; overflow: hidden; margin: 26px 0 14px; border-radius: 999px; background: #e8f0f2; }
+    .bar span { display: block; width: 36%; height: 100%; border-radius: inherit; background: #e47b3c; animation: travel 1.4s ease-in-out infinite; }
+    @keyframes travel { from { transform: translateX(-110%); } to { transform: translateX(390%); } }
+    #status { min-height: 48px; margin-bottom: 18px; }
+    .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    button, a { border-radius: 10px; padding: 11px 16px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+    button { border: 0; background: #0c6e8a; color: #fff; }
+    a { border: 1px solid #b9cbd1; color: #123047; background: #fff; }
+    small { display: block; margin-top: 18px; color: #78909c; }
+    @media (max-width: 420px) { .actions > * { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">✈</div>
+    <h1>Travel Guide is starting</h1>
+    <p>A sleeping Render service can take a moment to wake. We will open the application only after both its database health check and real homepage are stable.</p>
+    <div class="bar" aria-hidden="true"><span></span></div>
+    <p id="status" role="status" aria-live="polite">Beginning readiness checks…</p>
+    <div class="actions">
+      <button id="retry" type="button">Retry now</button>
+      <a id="direct" href="https://your-render-service.onrender.com/index.php">Open Render directly</a>
+    </div>
+    <small>If JavaScript is unavailable, use the direct Render link above and refresh after a minute.</small>
+    <noscript><p>Automatic startup checks require JavaScript.</p></noscript>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const healthPath = '/health.php';
+      const homepagePath = '/index.php';
+      const retryDelayMs = 5000;
+      const requestTimeoutMs = 10000;
+      const maxDurationMs = 4 * 60 * 1000;
+      const requiredSuccesses = 2;
+      const status = document.getElementById('status');
+      const retry = document.getElementById('retry');
+      let consecutive = 0;
+      let startedAt = Date.now();
+      let timer = null;
+      let running = false;
+
+      async function fetchWithTimeout(path) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+        const joiner = path.includes('?') ? '&' : '?';
+        try {
+          return await fetch(path + joiner + '_startup=' + Date.now(), {
+            cache: 'no-store',
+            credentials: 'include',
+            redirect: 'follow',
+            signal: controller.signal,
+            headers: { 'Cache-Control': 'no-cache' }
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+
+      async function checkOnce() {
+        const health = await fetchWithTimeout(healthPath);
+        if (!health.ok) throw new Error('Health returned HTTP ' + health.status);
+        const payload = await health.json();
+        if (payload.status !== 'ok') throw new Error('Health response was not ready');
+
+        const homepage = await fetchWithTimeout(homepagePath);
+        if (!homepage.ok) throw new Error('Homepage returned HTTP ' + homepage.status);
+        const contentType = homepage.headers.get('content-type') || '';
+        const body = await homepage.text();
+        if (!contentType.includes('text/html') || body.trim().length < 100) {
+          throw new Error('Homepage response was incomplete');
+        }
+      }
+
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(run, retryDelayMs);
+      }
+
+      async function run() {
+        if (running) return;
+        running = true;
+        status.textContent = 'Checking the service and homepage…';
+        try {
+          await checkOnce();
+          consecutive += 1;
+          status.textContent = 'Ready check ' + consecutive + ' of ' + requiredSuccesses + ' passed.';
+          if (consecutive >= requiredSuccesses) {
+            status.textContent = 'Travel Guide is ready. Opening it now…';
+            window.location.replace(homepagePath + '?_ready=' + Date.now());
+            return;
+          }
+        } catch (error) {
+          consecutive = 0;
+          status.textContent = 'Still waking up. We will retry in 5 seconds.';
+        } finally {
+          running = false;
+        }
+
+        if (Date.now() - startedAt >= maxDurationMs) {
+          status.textContent = 'Startup is taking longer than expected. Retry or open Render directly to inspect the response.';
+          return;
+        }
+        schedule();
+      }
+
+      retry.addEventListener('click', () => {
+        clearTimeout(timer);
+        consecutive = 0;
+        startedAt = Date.now();
+        run();
+      });
+
+      window.addEventListener('error', () => {
+        status.textContent = 'The automatic checker stopped. Use Retry or open Render directly.';
+      });
+
+      run();
+    })();
+  </script>
+</body>
+</html>

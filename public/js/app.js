@@ -1,6 +1,6 @@
 (function () {
     window.routeUrl = function (path, query) {
-        const base = document.querySelector('meta[name="app-base"]')?.content || '/project1/index.php';
+        const base = document.querySelector('meta[name="app-base"]')?.content || '/index.php';
         const route = path.startsWith('/') ? path : '/' + path;
         let u;
         if (route === '/') {
@@ -17,5 +17,9 @@
             }
         }
         return u;
+    };
+
+    window.csrfHeaders = function () {
+        return { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' };
     };
 })();

@@ -18,6 +18,7 @@ class Auth
 
     public static function login(array $user): void
     {
+        session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['name'] = $user['name'];
         $_SESSION['role'] = $user['role'];
@@ -37,6 +38,7 @@ class Auth
             setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
         }
         session_destroy();
+        Security::initSession();
     }
 
     public static function setRemember(int $userId, string $token): void
@@ -46,6 +48,7 @@ class Auth
             'path' => '/',
             'httponly' => true,
             'samesite' => 'Strict',
+            'secure' => Security::isHttps(),
         ]);
     }
 
@@ -56,6 +59,7 @@ class Auth
             'path' => '/',
             'httponly' => true,
             'samesite' => 'Strict',
+            'secure' => Security::isHttps(),
         ]);
     }
 
@@ -85,7 +89,7 @@ class Auth
     {
         self::requireLogin();
         if (!self::user()['is_verified']) {
-            redirect('/?pending=1');
+            redirect('/', ['pending' => 1]);
         }
     }
 
@@ -101,6 +105,7 @@ class Auth
     public static function requireAdmin(): void
     {
         self::requireRole('admin');
+        self::requireVerified();
     }
 
     public static function requireScout(): void

@@ -89,13 +89,23 @@ class ScoutController
     {
         Auth::requireScout();
         Security::requireCsrfPost();
+        $originalId = !empty($_POST['original_post_id']) ? (int) $_POST['original_post_id'] : null;
+        if ($originalId !== null) {
+            $original = $this->posts->findById($originalId);
+            if (!$original || (int) $original['scout_id'] !== Auth::user()['id']) {
+                flash('error', 'Invalid post change request.');
+                redirect('/scout/approved');
+            }
+        }
         $data = $this->collectPostData();
         if (!empty($data['errors'])) {
             $_SESSION['form_errors'] = $data['errors'];
             $_SESSION['form_old'] = $data['fields'];
+            if ($originalId !== null) {
+                redirect('/scout/change-request', ['post_id' => $originalId]);
+            }
             redirect('/scout/request/create');
         }
-        $originalId = !empty($_POST['original_post_id']) ? (int) $_POST['original_post_id'] : null;
         $this->requests->create(Auth::user()['id'], $data['fields'], $originalId);
         flash('success', 'Request submitted for admin review.');
         redirect('/scout/requests');
@@ -109,9 +119,13 @@ class ScoutController
         $data = $this->collectPostData();
         if (!empty($data['errors'])) {
             $_SESSION['form_errors'] = $data['errors'];
-            redirect('/scout/request/edit?id=' . $id);
+            redirect('/scout/request/edit', ['id' => $id]);
         }
-        if (!$this->requests->update($id, Auth::user()['id'], $data['fields'])) {
+        $existing = $this->requests->find($id, Auth::user()['id']);
+        if ($existing && !array_key_exists('image_paths', $data['fields']) && !empty($existing['post_data']['image_paths'])) {
+            $data['fields']['image_paths'] = $existing['post_data']['image_paths'];
+        }
+        if (!$existing || !$this->requests->update($id, Auth::user()['id'], $data['fields'])) {
             flash('error', 'Could not update request.');
         } else {
             flash('success', 'Request updated.');
@@ -128,7 +142,6 @@ class ScoutController
             'genre' => $_POST['genre'] ?? '',
             'cost_level' => $_POST['cost_level'] ?? '',
             'travel_medium_info' => trim($_POST['travel_medium_info'] ?? ''),
-            'image_paths' => [],
         ];
         $errors = [];
         foreach (['title', 'short_history', 'country', 'travel_medium_info'] as $f) {
@@ -146,6 +159,11 @@ class ScoutController
         if (!empty($_FILES['images']['name'][0])) {
             $paths = [];
             $count = count($_FILES['images']['name']);
+            if ($count > MAX_POST_IMAGES) {
+                $errors['images'] = 'Upload at most ' . MAX_POST_IMAGES . ' images.';
+                return ['fields' => $fields, 'errors' => $errors];
+            }
+            $files = [];
             for ($i = 0; $i < $count; $i++) {
                 $file = [
                     'name' => $_FILES['images']['name'][$i],
@@ -162,8 +180,15 @@ class ScoutController
                     $errors['images'] = $err;
                     break;
                 }
-                $saved = Security::saveUpload($file, POST_UPLOAD_DIR, 'post');
-                if ($saved) {
+                $files[] = $file;
+            }
+            if (!isset($errors['images'])) {
+                foreach ($files as $file) {
+                    $saved = Security::saveUpload($file, POST_UPLOAD_DIR, 'post', 'posts');
+                    if (!$saved) {
+                        $errors['images'] = 'Could not save image.';
+                        break;
+                    }
                     $paths[] = $saved;
                 }
             }

@@ -7,11 +7,11 @@ $profilePicture = $profile['profile_picture'] ?? null;
 $profileName = $profile['name'] ?? '';
 $profileEmail = $profile['email'] ?? '';
 $pic = $profilePicture
-    ? PROFILE_UPLOAD_WEB . '/' . Security::e($profilePicture)
+    ? uploadUrl($profilePicture, 'profile')
     : 'https://ui-avatars.com/api/?name=' . urlencode($profileName) . '&background=0c6e8a&color=fff';
 ?>
 <div class="form-card" style="max-width:560px">
-    <img class="profile-avatar" src="<?= $pic ?>" alt="Avatar" style="margin-bottom:20px">
+    <img class="profile-avatar" src="<?= Security::e($pic) ?>" alt="Avatar" style="margin-bottom:20px">
     <form method="post" action="<?= url('/profile') ?>" enctype="multipart/form-data" id="profile-form" novalidate>
         <?= Security::csrfField() ?>
         <div class="form-group">

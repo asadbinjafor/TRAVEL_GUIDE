@@ -4,10 +4,11 @@ class CommentApiController
     public function add(): void
     {
         Auth::requireGeneralUser();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $postId = (int) ($input['post_id'] ?? 0);
         $content = trim($input['content'] ?? '');
-        $displayName = trim($input['display_name'] ?? Auth::user()['name']);
+        $displayName = Auth::user()['name'];
 
         if ($postId <= 0 || $content === '') {
             Security::json(['success' => false, 'error' => 'Comment cannot be empty.'], 400);
@@ -35,6 +36,7 @@ class CommentApiController
     public function delete(): void
     {
         Auth::requireGeneralUser();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['id'] ?? $_GET['id'] ?? 0);
         $comment = (new CommentModel())->find($id);

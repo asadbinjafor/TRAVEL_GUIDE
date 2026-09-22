@@ -106,7 +106,7 @@
             errEl.style.display = 'none';
             const res = await fetch(window.routeUrl('/api/comments/add'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...window.csrfHeaders() },
                 body: JSON.stringify({
                     post_id: document.getElementById('comment-post-id').value,
                     content,
@@ -134,7 +134,7 @@
         btn.addEventListener('click', async () => {
             const res = await fetch(window.routeUrl('/api/comments/delete'), {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...window.csrfHeaders() },
                 body: JSON.stringify({ id: btn.dataset.id }),
             });
             const data = await res.json();

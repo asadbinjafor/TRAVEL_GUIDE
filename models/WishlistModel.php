@@ -11,7 +11,8 @@ class WishlistModel
     public function add(int $userId, int $postId): bool
     {
         $stmt = $this->db->prepare(
-            'INSERT IGNORE INTO wishlist (user_id, post_id) VALUES (?, ?)'
+            'INSERT INTO wishlist (user_id, post_id) VALUES (?, ?)
+             ON CONFLICT (user_id, post_id) DO NOTHING'
         );
         return $stmt->execute([$userId, $postId]);
     }

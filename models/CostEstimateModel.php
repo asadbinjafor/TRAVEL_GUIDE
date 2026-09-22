@@ -20,7 +20,10 @@ class CostEstimateModel
     {
         $stmt = $this->db->prepare(
             'INSERT INTO cost_estimates (post_id, base_cost, currency) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE base_cost = VALUES(base_cost), last_updated = NOW()'
+             ON CONFLICT (post_id) DO UPDATE SET
+                base_cost = EXCLUDED.base_cost,
+                currency = EXCLUDED.currency,
+                last_updated = CURRENT_TIMESTAMP'
         );
         $stmt->execute([$postId, $baseCost, $currency]);
     }

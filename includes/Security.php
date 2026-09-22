@@ -1,12 +1,22 @@
 <?php
 class Security
 {
+    public static function isHttps(): bool
+    {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]));
+            return $proto === 'https';
+        }
+        return !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    }
+
     public static function initSession(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
             return;
         }
-        $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $secure = self::isHttps();
+        ini_set('session.use_strict_mode', '1');
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
@@ -26,6 +36,8 @@ class Security
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: SAMEORIGIN');
         header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        header('Cache-Control: private, no-store, max-age=0');
     }
 
     public static function csrfToken(): string
@@ -60,6 +72,14 @@ class Security
         }
     }
 
+    public static function requireCsrfRequest(): void
+    {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
+        if (!self::verifyCsrf(is_string($token) ? $token : null)) {
+            self::json(['success' => false, 'error' => 'Invalid CSRF token.'], 403);
+        }
+    }
+
     public static function e(?string $value): string
     {
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -81,8 +101,11 @@ class Security
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return 'Upload failed.';
         }
-        if ($file['size'] > UPLOAD_MAX_BYTES) {
-            return 'Image must be under 2MB.';
+        if (($file['size'] ?? 0) <= 0 || $file['size'] > UPLOAD_MAX_BYTES) {
+            return 'Image has an invalid size.';
+        }
+        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return 'Upload source is invalid.';
         }
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
@@ -92,7 +115,7 @@ class Security
         return null;
     }
 
-    public static function saveUpload(array $file, string $dir, string $prefix): ?string
+    public static function saveUpload(array $file, string $dir, string $prefix, string $storageFolder): ?string
     {
         if ($file['error'] === UPLOAD_ERR_NO_FILE) {
             return null;
@@ -109,6 +132,9 @@ class Security
             default => 'jpg',
         };
         $name = $prefix . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+        if (Storage::isConfigured()) {
+            return Storage::upload($file['tmp_name'], $mime, $storageFolder, $name);
+        }
         $path = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $name;
         return move_uploaded_file($file['tmp_name'], $path) ? $name : null;
     }

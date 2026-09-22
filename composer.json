@@ -1,0 +1,18 @@
+{
+  "name": "asadbinjafor/travel-guide",
+  "description": "Travel Guide PHP MVC application",
+  "license": "proprietary",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "ext-curl": "*",
+    "ext-fileinfo": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "ext-pdo": "*",
+    "ext-pdo_pgsql": "*"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

@@ -23,6 +23,7 @@ $authVerified = !empty($authUser['is_verified']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="app-base" content="<?= Security::e(url('/')) ?>">
+    <meta name="csrf-token" content="<?= Security::e(Security::csrfToken()) ?>">
 
     <title><?= $pageTitle ?> | Travel Guide</title>
 
@@ -86,7 +87,10 @@ $authVerified = !empty($authUser['is_verified']);
 
                 <span class="badge badge-role"><?= Security::e($authRole) ?></span>
 
-                <a href="<?= url('/logout') ?>">Logout</a>
+                <form class="nav-logout" method="post" action="<?= url('/logout') ?>">
+                    <?= Security::csrfField() ?>
+                    <button type="submit">Logout</button>
+                </form>
 
             <?php endif; ?>
 

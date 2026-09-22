@@ -1,8 +1,23 @@
 <?php
+declare(strict_types=1);
+
 require_once dirname(__DIR__) . '/config/app.php';
 require_once dirname(__DIR__) . '/config/database.php';
+require_once __DIR__ . '/Storage.php';
 require_once __DIR__ . '/Security.php';
 require_once __DIR__ . '/Auth.php';
+
+set_exception_handler(function (Throwable $exception): void {
+    if (APP_DEBUG) {
+        throw $exception;
+    }
+    error_log($exception::class . ': application request failed');
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>Service unavailable</title><body><h1>Service temporarily unavailable</h1><p>Please try again shortly.</p></body></html>';
+});
 
 Security::initSession();
 Security::headers();
@@ -10,10 +25,7 @@ ensureUploadDirs();
 Auth::tryRememberLogin();
 
 spl_autoload_register(function (string $class): void {
-    foreach ([
-        ROOT_DIR . '/controllers/' . $class . '.php',
-        ROOT_DIR . '/models/' . $class . '.php',
-    ] as $path) {
+    foreach ([ROOT_DIR . '/controllers/' . $class . '.php', ROOT_DIR . '/models/' . $class . '.php'] as $path) {
         if (is_file($path)) {
             require_once $path;
             return;
@@ -24,43 +36,47 @@ spl_autoload_register(function (string $class): void {
 function view(string $name, array $data = []): void
 {
     extract($data, EXTR_SKIP);
-    // Always set after extract so view data cannot overwrite session nav user.
     $authUser = Auth::user();
     $viewFile = ROOT_DIR . '/views/' . $name . '.php';
     if (!is_file($viewFile)) {
-        http_response_code(500);
-        die('View not found: ' . Security::e($name));
+        throw new RuntimeException('View not found.');
     }
     require ROOT_DIR . '/views/layouts/header.php';
     require $viewFile;
     require ROOT_DIR . '/views/layouts/footer.php';
 }
 
-/** Page URL without .htaccess (uses index.php?route=) */
 function url(string $path = '/', array $query = []): string
 {
     $path = '/' . trim($path, '/');
     $base = rtrim(BASE_URL, '/') . '/index.php';
-    if ($path === '/') {
-        $u = $base;
-    } else {
-        $u = $base . '?route=' . rawurlencode($path);
-    }
+    $target = $path === '/' ? $base : $base . '?route=' . rawurlencode($path);
     if ($query !== []) {
-        $u .= (str_contains($u, '?') ? '&' : '?') . http_build_query($query);
+        $target .= (str_contains($target, '?') ? '&' : '?') . http_build_query($query);
     }
-    return $u;
+    return $target;
 }
 
-/** Static files (css, js, uploads) */
 function asset(string $path): string
 {
     return rtrim(BASE_URL, '/') . '/' . ltrim($path, '/');
 }
 
-function redirect(string $path): void
+function uploadUrl(?string $reference, string $type): ?string
 {
-    header('Location: ' . url($path));
+    if ($reference === null || $reference === '') {
+        return null;
+    }
+    if (filter_var($reference, FILTER_VALIDATE_URL)) {
+        return $reference;
+    }
+    $folder = $type === 'profile' ? 'profiles' : 'posts';
+    return asset('public/uploads/' . $folder . '/' . rawurlencode(basename($reference)));
+}
+
+function redirect(string $path, array $query = []): never
+{
+    header('Location: ' . url($path, $query), true, 303);
     exit;
 }
 

@@ -4,6 +4,7 @@ class ScoutApiController
     public function delete(): void
     {
         Auth::requireScout();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['id'] ?? $_GET['id'] ?? 0);
         if ($id <= 0) {

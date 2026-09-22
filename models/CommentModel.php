@@ -22,10 +22,10 @@ class CommentModel
     public function create(int $postId, int $userId, string $content): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)'
+            'INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?) RETURNING id'
         );
         $stmt->execute([$postId, $userId, $content]);
-        return (int) $this->db->lastInsertId();
+        return (int) $stmt->fetchColumn();
     }
 
     public function find(int $id): ?array

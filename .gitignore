@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+/vendor/
+/.idea/
+/.vscode/
+*.log
+/public/uploads/profiles/*
+/public/uploads/posts/*
+!/public/uploads/profiles/.gitkeep
+!/public/uploads/posts/.gitkeep

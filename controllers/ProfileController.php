@@ -33,7 +33,7 @@ class ProfileController
         $id = Auth::user()['id'];
         $user = $this->users->findById($id);
         $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = strtolower(trim($_POST['email'] ?? ''));
         $current = $_POST['current_password'] ?? '';
         $newPass = $_POST['new_password'] ?? '';
         $confirm = $_POST['new_password_confirm'] ?? '';
@@ -56,7 +56,7 @@ class ProfileController
             if ($err) {
                 $errors['profile_picture'] = $err;
             } else {
-                $saved = Security::saveUpload($_FILES['profile_picture'], PROFILE_UPLOAD_DIR, 'profile_' . $id);
+                $saved = Security::saveUpload($_FILES['profile_picture'], PROFILE_UPLOAD_DIR, 'profile_' . $id, 'profiles');
                 if ($saved) {
                     $picture = $saved;
                 } else {

@@ -10,8 +10,8 @@ class UserModel
 
     public function findByEmail(string $email): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
+        $stmt = $this->db->prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1');
+        $stmt->execute([trim($email)]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
@@ -28,17 +28,16 @@ class UserModel
     {
         $stmt = $this->db->prepare(
             'INSERT INTO users (name, email, password_hash, role, is_verified, profile_picture)
-             VALUES (?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?) RETURNING id'
         );
-        $stmt->execute([
-            $data['name'],
-            $data['email'],
-            $data['password_hash'],
-            $data['role'],
-            $data['is_verified'] ?? 0,
-            $data['profile_picture'] ?? null,
-        ]);
-        return (int) $this->db->lastInsertId();
+        $stmt->bindValue(1, $data['name']);
+        $stmt->bindValue(2, strtolower(trim($data['email'])));
+        $stmt->bindValue(3, $data['password_hash']);
+        $stmt->bindValue(4, $data['role']);
+        $stmt->bindValue(5, !empty($data['is_verified']), PDO::PARAM_BOOL);
+        $stmt->bindValue(6, $data['profile_picture'] ?? null);
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
     }
 
     public function updateProfile(int $id, string $name, string $email, ?string $picture): bool
@@ -92,7 +91,7 @@ class UserModel
     public function hasVerifiedAdmin(): bool
     {
         $stmt = $this->db->query(
-            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_verified = 1"
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_verified = TRUE"
         );
         return (int) $stmt->fetchColumn() > 0;
     }
@@ -100,7 +99,7 @@ class UserModel
     public function countVerifiedAdmins(): int
     {
         $stmt = $this->db->query(
-            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_verified = 1"
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_verified = TRUE"
         );
         return (int) $stmt->fetchColumn();
     }
@@ -120,7 +119,9 @@ class UserModel
     public function setVerified(int $id, int $verified): bool
     {
         $stmt = $this->db->prepare('UPDATE users SET is_verified = ? WHERE id = ?');
-        return $stmt->execute([$verified, $id]);
+        $stmt->bindValue(1, $verified === 1, PDO::PARAM_BOOL);
+        $stmt->bindValue(2, $id, PDO::PARAM_INT);
+        return $stmt->execute();
     }
 
     public function deleteUser(int $id): bool

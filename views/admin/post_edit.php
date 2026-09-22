@@ -1,4 +1,5 @@
 <h1 class="page-title">Edit Post</h1>
+<?php if (!empty($errors)): ?><div class="alert alert-danger"><?= Security::e(reset($errors)) ?></div><?php endif; ?>
 <div class="form-card" style="max-width:640px">
     <form method="post" action="<?= url('/admin/posts/edit') ?>">
         <?= Security::csrfField() ?>

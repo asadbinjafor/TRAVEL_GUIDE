@@ -4,6 +4,7 @@ class AdminApiController
     public function toggleVerify(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['user_id'] ?? 0);
         $verified = (int) ($input['is_verified'] ?? 0) ? 1 : 0;
@@ -28,6 +29,7 @@ class AdminApiController
     public function approveRequest(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['request_id'] ?? 0);
         $reqModel = new PostRequestModel();
@@ -35,24 +37,33 @@ class AdminApiController
         if (!$req || $req['status'] !== 'pending') {
             Security::json(['success' => false, 'error' => 'Request not found.'], 404);
         }
-        $d = $req['post_data'];
-        $postModel = new PostModel();
-        if (!empty($req['original_post_id'])) {
-            $postModel->update((int) $req['original_post_id'], array_merge($d, [
-                'image_paths_json' => isset($d['image_paths']) ? json_encode($d['image_paths']) : null,
-            ]));
-            $postId = (int) $req['original_post_id'];
-        } else {
-            $postId = $postModel->createFromData((int) $req['scout_id'], $d, 'approved');
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $d = $req['post_data'];
+            $postModel = new PostModel();
+            if (!empty($req['original_post_id'])) {
+                $postModel->update((int) $req['original_post_id'], array_merge($d, [
+                    'image_paths_json' => isset($d['image_paths']) ? json_encode($d['image_paths']) : null,
+                ]));
+                $postId = (int) $req['original_post_id'];
+            } else {
+                $postId = $postModel->createFromData((int) $req['scout_id'], $d, 'approved');
+            }
+            (new CostEstimateModel())->upsertForPost($postId, baseCostFromLevel($d['cost_level']));
+            $reqModel->deleteById($id);
+            $database->commit();
+        } catch (Throwable $exception) {
+            $database->rollBack();
+            throw $exception;
         }
-        (new CostEstimateModel())->upsertForPost($postId, baseCostFromLevel($d['cost_level']));
-        $reqModel->deleteById($id);
         Security::json(['success' => true, 'post_id' => $postId]);
     }
 
     public function rejectRequest(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['request_id'] ?? 0);
         $reason = trim($input['reason'] ?? 'Rejected by admin');
@@ -66,6 +77,7 @@ class AdminApiController
     public function deletePost(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['post_id'] ?? 0);
         (new PostModel())->delete($id);
@@ -75,6 +87,7 @@ class AdminApiController
     public function deleteComment(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['comment_id'] ?? 0);
         (new CommentModel())->delete($id);
@@ -84,6 +97,7 @@ class AdminApiController
     public function deleteUser(): void
     {
         Auth::requireAdmin();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = (int) ($input['user_id'] ?? 0);
         if ($id === Auth::user()['id']) {

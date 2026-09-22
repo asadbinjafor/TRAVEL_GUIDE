@@ -1,6 +1,6 @@
 (function () {
     async function api(path, method, body) {
-        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        const opts = { method, headers: { 'Content-Type': 'application/json', ...window.csrfHeaders() } };
         if (body) opts.body = JSON.stringify(body);
         const res = await fetch(window.routeUrl(path), opts);
         return res.json();

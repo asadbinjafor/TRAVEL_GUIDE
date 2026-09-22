@@ -1,0 +1,12 @@
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?:config|controllers|database|docker|includes|models|scripts|views)(?:/|$) - [F,L,NC]
+    RewriteRule ^(?:composer\.(?:json|lock)|render\.yaml|database\.sql|DEPLOYMENT_GUIDE\.md|README\.md|\.env(?:\..*)?)$ - [F,L,NC]
+    RewriteRule "^Travel Guide\.docx$" - [F,L,NC]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>

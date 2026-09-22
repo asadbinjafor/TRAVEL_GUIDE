@@ -4,7 +4,6 @@ return [
         '/' => ['HomeController', 'index'],
         '/login' => ['AuthController', 'showLogin'],
         '/register' => ['AuthController', 'showRegister'],
-        '/logout' => ['AuthController', 'logout'],
         '/profile' => ['ProfileController', 'show'],
         '/wishlist' => ['WishlistController', 'index'],
         '/scout/requests' => ['ScoutController', 'requests'],
@@ -24,6 +23,7 @@ return [
     'POST' => [
         '/login' => ['AuthController', 'login'],
         '/register' => ['AuthController', 'register'],
+        '/logout' => ['AuthController', 'logout'],
         '/profile' => ['ProfileController', 'update'],
         '/scout/request/create' => ['ScoutController', 'store'],
         '/scout/request/edit' => ['ScoutController', 'update'],

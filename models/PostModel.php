@@ -56,7 +56,7 @@ class PostModel
         $stmt = $this->db->prepare(
             "SELECT p.*, u.name AS scout_name FROM posts p
              JOIN users u ON u.id = p.scout_id
-             WHERE p.status = 'approved' AND (p.title LIKE ? OR p.country LIKE ?)
+             WHERE p.status = 'approved' AND (p.title ILIKE ? OR p.country ILIKE ?)
              ORDER BY p.title ASC"
         );
         $stmt->execute([$like, $like]);
@@ -98,7 +98,7 @@ class PostModel
         $images = isset($d['image_paths']) ? json_encode($d['image_paths']) : null;
         $stmt = $this->db->prepare(
             'INSERT INTO posts (scout_id, title, short_history, country, genre, cost_level, travel_medium_info, image_paths, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?) RETURNING id'
         );
         $stmt->execute([
             $scoutId,
@@ -111,7 +111,7 @@ class PostModel
             $images,
             $status,
         ]);
-        return (int) $this->db->lastInsertId();
+        return (int) $stmt->fetchColumn();
     }
 
     public function update(int $id, array $d): bool
@@ -119,7 +119,7 @@ class PostModel
         $images = isset($d['image_paths']) ? json_encode($d['image_paths']) : ($d['image_paths_json'] ?? null);
         $stmt = $this->db->prepare(
             'UPDATE posts SET title = ?, short_history = ?, country = ?, genre = ?, cost_level = ?,
-             travel_medium_info = ?, image_paths = COALESCE(?, image_paths), updated_at = NOW() WHERE id = ?'
+             travel_medium_info = ?, image_paths = COALESCE(CAST(? AS jsonb), image_paths), updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         );
         return $stmt->execute([
             $d['title'],

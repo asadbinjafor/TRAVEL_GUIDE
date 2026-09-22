@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.idea
+.vscode
+vendor
+public/uploads/profiles/*
+public/uploads/posts/*
+Travel Guide.docx
+vercel-proxy

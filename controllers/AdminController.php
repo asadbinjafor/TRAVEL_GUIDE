@@ -44,7 +44,7 @@ class AdminController
         Auth::requireAdmin();
         Security::requireCsrfPost();
         $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? 'user';
         $verified = !empty($_POST['is_verified']) ? 1 : 0;
@@ -72,13 +72,22 @@ class AdminController
             redirect('/admin/users/add');
         }
 
-        (new UserModel())->create([
-            'name' => $name,
-            'email' => $email,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role' => $role,
-            'is_verified' => $verified,
-        ]);
+        try {
+            (new UserModel())->create([
+                'name' => $name,
+                'email' => $email,
+                'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                'role' => $role,
+                'is_verified' => $verified,
+            ]);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() !== '23505') {
+                throw $exception;
+            }
+            $_SESSION['form_errors'] = ['email' => 'Email exists.'];
+            $_SESSION['form_old'] = compact('name', 'email', 'role');
+            redirect('/admin/users/add');
+        }
         flash('success', 'User created.');
         redirect('/admin/users');
     }
@@ -123,6 +132,25 @@ class AdminController
             'cost_level' => $_POST['cost_level'] ?? '',
             'travel_medium_info' => trim($_POST['travel_medium_info'] ?? ''),
         ];
+        $errors = [];
+        foreach (['title', 'short_history', 'country', 'travel_medium_info'] as $field) {
+            if ($data[$field] === '') {
+                $errors[$field] = 'This field is required.';
+            }
+        }
+        if (!in_array($data['genre'], GENRES, true)) {
+            $errors['genre'] = 'Invalid genre.';
+        }
+        if (!in_array($data['cost_level'], ['low', 'medium', 'high'], true)) {
+            $errors['cost_level'] = 'Invalid cost level.';
+        }
+        if (!(new PostModel())->findById($id)) {
+            $errors['post'] = 'Post not found.';
+        }
+        if ($errors) {
+            $_SESSION['form_errors'] = $errors;
+            redirect('/admin/posts/edit', ['id' => $id]);
+        }
         (new PostModel())->update($id, $data);
         (new CostEstimateModel())->upsertForPost($id, baseCostFromLevel($data['cost_level']));
         flash('success', 'Post updated.');

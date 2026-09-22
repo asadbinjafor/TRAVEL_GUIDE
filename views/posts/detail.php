@@ -12,7 +12,7 @@
 <?php if (!empty($images)): ?>
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
     <?php foreach ($images as $img): ?>
-        <img src="<?= POST_UPLOAD_WEB . '/' . Security::e($img) ?>" alt="" style="max-width:200px;border-radius:8px">
+        <img src="<?= Security::e(uploadUrl($img, 'post')) ?>" alt="" style="max-width:200px;border-radius:8px">
     <?php endforeach; ?>
 </div>
 <?php endif; ?>

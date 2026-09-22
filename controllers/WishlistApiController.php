@@ -4,6 +4,7 @@ class WishlistApiController
     public function add(): void
     {
         Auth::requireGeneralUser();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $postId = (int) ($input['post_id'] ?? 0);
         if ($postId <= 0) {
@@ -20,6 +21,7 @@ class WishlistApiController
     public function remove(): void
     {
         Auth::requireGeneralUser();
+        Security::requireCsrfRequest();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $postId = (int) ($input['post_id'] ?? $_GET['post_id'] ?? 0);
         if ($postId <= 0) {

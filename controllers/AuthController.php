@@ -37,7 +37,7 @@ class AuthController
     public function login(): void
     {
         Security::requireCsrfPost();
-        $email = trim($_POST['email'] ?? '');
+        $email = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
         $remember = !empty($_POST['remember_me']);
         $errors = [];
@@ -59,11 +59,6 @@ class AuthController
         if (!$user || !password_verify($password, $user['password_hash'])) {
             flash('error', 'Invalid email or password.');
             redirect('/login');
-        }
-
-        if ($user['role'] === 'admin' && !(new UserModel())->hasVerifiedAdmin()) {
-            (new UserModel())->setVerified((int) $user['id'], 1);
-            $user['is_verified'] = 1;
         }
 
         Auth::login($user);
@@ -90,10 +85,10 @@ class AuthController
     {
         Security::requireCsrfPost();
         $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
         $confirm = $_POST['password_confirm'] ?? '';
-        $role = $_POST['role'] ?? 'user';
+        $role = 'user';
         $errors = [];
 
         if ($name === '') {
@@ -108,9 +103,6 @@ class AuthController
         if ($password !== $confirm) {
             $errors['password_confirm'] = 'Passwords do not match.';
         }
-        if (!in_array($role, ['admin', 'scout', 'user'], true)) {
-            $errors['role'] = 'Invalid role.';
-        }
         if ($this->users->findByEmail($email)) {
             $errors['email'] = 'Email already registered.';
         }
@@ -121,13 +113,22 @@ class AuthController
             redirect('/register');
         }
 
-        $this->users->create([
-            'name' => $name,
-            'email' => $email,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role' => $role,
-            'is_verified' => 0,
-        ]);
+        try {
+            $this->users->create([
+                'name' => $name,
+                'email' => $email,
+                'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                'role' => $role,
+                'is_verified' => 0,
+            ]);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() !== '23505') {
+                throw $exception;
+            }
+            $_SESSION['form_errors'] = ['email' => 'Email already registered.'];
+            $_SESSION['form_old'] = compact('name', 'email');
+            redirect('/register');
+        }
 
         flash('success', 'Registration successful. Please login after admin approval.');
         redirect('/login');
@@ -135,6 +136,7 @@ class AuthController
 
     public function logout(): void
     {
+        Security::requireCsrfPost();
         Auth::logout();
         flash('success', 'You have been logged out.');
         redirect('/');

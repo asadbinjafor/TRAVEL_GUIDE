@@ -94,6 +94,20 @@ main.container { padding-top: 32px; padding-bottom: 48px; }
 
 .nav-links a:hover { background: var(--bg); color: var(--primary); }
 
+.nav-logout { display: inline; margin: 0; }
+.nav-logout button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 8px 12px;
+}
+.nav-logout button:hover { background: var(--bg); color: var(--primary); }
+
 .btn {
     display: inline-flex;
     align-items: center;
